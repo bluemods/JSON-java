@@ -308,7 +308,7 @@ public class JSONObjectTest {
      */
     @Test
     public void jsonObjectByMap() {
-        Map<String, Object> map = new HashMap<String, Object>();
+        Map<String, Object> map = new LinkedHashMap<String, Object>();
         map.put("trueKey", Boolean.valueOf(true));
         map.put("falseKey", Boolean.valueOf(false));
         map.put("stringKey", "hello world!");
@@ -553,7 +553,7 @@ public class JSONObjectTest {
      */
     @Test
     public void jsonObjectByMapWithUnsupportedValues() {
-        Map<String, Object> jsonMap = new HashMap<String, Object>();
+        Map<String, Object> jsonMap = new LinkedHashMap<String, Object>();
         // Just insert some random objects
         jsonMap.put("key1", new CDL());
         jsonMap.put("key2", new Exception());
@@ -574,7 +574,7 @@ public class JSONObjectTest {
      */
     @Test
     public void jsonObjectByMapWithNullValue() {
-        Map<String, Object> map = new HashMap<String, Object>();
+        Map<String, Object> map = new LinkedHashMap<String, Object>();
         map.put("trueKey", Boolean.valueOf(true));
         map.put("falseKey", Boolean.valueOf(false));
         map.put("stringKey", "hello world!");
@@ -1454,7 +1454,7 @@ public class JSONObjectTest {
          * wrap() vs put() big number behavior is now the same.
          */
         // bigInt map ctor 
-        Map<String, Object> map = new HashMap<String, Object>();
+        Map<String, Object> map = new LinkedHashMap<String, Object>();
         map.put("bigInt", bigInteger);
         JSONObject jsonObject4 = new JSONObject(map);
         String actualFromMapStr = jsonObject4.toString();
@@ -1469,7 +1469,7 @@ public class JSONObjectTest {
                 actualFromPutStr.equals(
                 "{\"bigInt\":123456789012345678901234567890}"));
         // bigDec map ctor
-        map = new HashMap<String, Object>();
+        map = new LinkedHashMap<String, Object>();
         map.put("bigDec", bigDecimal);
         JSONObject jsonObject6 = new JSONObject(map);
         actualFromMapStr = jsonObject6.toString();
@@ -1858,7 +1858,7 @@ public class JSONObjectTest {
         jsonObject.put("falseKey", false);
         Integer [] intArray = { 0, 1, 2 };
         jsonObject.put("arrayKey", Arrays.asList(intArray));
-        Map<String, Object> myMap = new HashMap<String, Object>();
+        Map<String, Object> myMap = new LinkedHashMap<String, Object>();
         myMap.put("myKey1", "myVal1");
         myMap.put("myKey2", "myVal2");
         myMap.put("myKey3", "myVal3");
@@ -2037,7 +2037,7 @@ public class JSONObjectTest {
     @Test
     public void jsonObjectToStringSuppressWarningOnCastToMap() {
         JSONObject jsonObject = new JSONObject();
-        Map<String, String> map = new HashMap<>();
+        Map<String, String> map = new LinkedHashMap<>();
         map.put("abc", "def");
         jsonObject.put("key", map);
 
@@ -2101,7 +2101,7 @@ public class JSONObjectTest {
         JSONArray jsonArray = new JSONArray(jsonArrayStr);
         assertTrue("jsonArray valueToString() incorrect",
                 JSONObject.valueToString(jsonArray).equals(jsonArray.toString()));
-        Map<String, String> map = new HashMap<String, String>();
+        Map<String, String> map = new LinkedHashMap<String, String>();
         map.put("key1", "val1");
         map.put("key2", "val2");
         map.put("key3", "val3");
@@ -2130,7 +2130,7 @@ public class JSONObjectTest {
     @SuppressWarnings("boxing")
     @Test
     public void valueToStringConfirmException() {
-        Map<Integer, String> myMap = new HashMap<Integer, String>();
+        Map<Integer, String> myMap = new LinkedHashMap<Integer, String>();
         myMap.put(1,  "myValue");
         // this is the test, it should not throw an exception
         String str = JSONObject.valueToString(myMap);
@@ -2211,7 +2211,7 @@ public class JSONObjectTest {
         assertTrue("expected 3", Integer.valueOf(3).equals(jsonArray.query("/2")));
 
         // wrap map returns JSONObject
-        Map<String, String> map = new HashMap<String, String>();
+        Map<String, String> map = new LinkedHashMap<String, String>();
         map.put("key1", "val1");
         map.put("key2", "val2");
         map.put("key3", "val3");
@@ -3699,7 +3699,7 @@ public class JSONObjectTest {
     @Test
     public void issue713MapConstructorWithNonFiniteNumbers() {
         for (Number nonFinite : NON_FINITE_NUMBERS) {
-            Map<String, Number> map = new HashMap<>();
+            Map<String, Number> map = new LinkedHashMap<>();
             map.put("a", nonFinite);
 
             assertThrows(JSONException.class, () -> new JSONObject(map));
@@ -3711,6 +3711,24 @@ public class JSONObjectTest {
         for (Number nonFinite : NON_FINITE_NUMBERS) {
             GenericBean<Number> bean = new GenericBean<>(nonFinite);
             assertThrows(JSONException.class, () -> new JSONObject(bean));
+        }
+    }
+
+    @Test
+    public void testKeyOrdering() {
+        JSONObject json = new JSONObject();
+        for (int i = 0; i < 1024; i++) {
+            json.put(Integer.toString(i), i);
+        }
+
+        int i = 0;
+        for (Map.Entry<String, Object> entry : json.toMap().entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            assertEquals(Integer.toString(i), key);
+            assertTrue(value instanceof Integer);
+            assertEquals((int) ((Integer) value), i);
+            i++;
         }
     }
 }

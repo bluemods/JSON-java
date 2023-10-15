@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -708,7 +708,7 @@ public class JSONArrayTest {
         // 7
         jsonArray.put(jsonObject);
 
-        Map<String, Object> map = new HashMap<String, Object>();
+        Map<String, Object> map = new LinkedHashMap<String, Object>();
         map.put("k1", "v1");
         // 8
         jsonArray.put(map);
@@ -791,7 +791,7 @@ public class JSONArrayTest {
         collection.add(2);
         jsonArray.put(9,collection);
 
-        Map<String, Object> map = new HashMap<String, Object>();
+        Map<String, Object> map = new LinkedHashMap<String, Object>();
         map.put("k1", "v1");
         jsonArray.put(10, map);
         try {

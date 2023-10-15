@@ -6,9 +6,22 @@
 JSON in Java [package org.json]
 ===============================
 
-[![Maven Central](https://img.shields.io/maven-central/v/org.json/json.svg)](https://mvnrepository.com/artifact/org.json/json)
+A very simple fork of JSON-java that uses a LinkedHashMap instead of a HashMap in JSONObject.java, causing the keys to be ordered.
+The main repo has [decided against supporting this.](https://github.com/stleary/JSON-java/wiki/FAQ#why-isnt-ordering-allowed-in-jsonobjects)
+Ordering the keys improves human readability (AKA visual parsing) and speeds up debugging by having the output be in a predictable order.
 
-**[Click here if you just want the latest release jar file.](https://search.maven.org/remotecontent?filepath=org/json/json/20231013/json-20231013.jar)**
+# Gradle setup
+```groovy
+repositories {
+    mavenCentral()
+    maven {
+        url "https://jitpack.io"
+    }
+}
+dependencies {
+    implementation 'com.github.bluemods:JSON-java:20231013'
+}
+```
 
 
 # Overview
