@@ -3817,4 +3817,21 @@ public class JSONObjectTest {
         return nestedMap;
     }
 
+    @Test
+    public void testKeyOrdering() {
+        JSONObject json = new JSONObject();
+        for (int i = 0; i < 1024; i++) {
+            json.put(Integer.toString(i), i);
+        }
+
+        int i = 0;
+        for (Map.Entry<String, Object> entry : json.toMap().entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            assertEquals(Integer.toString(i), key);
+            assertTrue(value instanceof Integer);
+            assertEquals((int) ((Integer) value), i);
+            i++;
+        }
+    }
 }
