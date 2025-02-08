@@ -1,7 +1,7 @@
 package org.json;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 
 /*
 Public Domain.
@@ -32,13 +32,27 @@ public class JSONTokener {
     /** the number of characters read in the previous line. */
     private long characterPreviousLine;
 
+    // access to this object is required for strict mode checking
+    private JSONParserConfiguration jsonParserConfiguration;
 
     /**
      * Construct a JSONTokener from a Reader. The caller must close the Reader.
      *
-     * @param reader     A reader.
+     * @param reader the source.
      */
     public JSONTokener(Reader reader) {
+        this(reader, new JSONParserConfiguration());
+    }
+
+    /**
+     * Construct a JSONTokener from a Reader with a given JSONParserConfiguration. The caller must close the Reader.
+     *
+     * @param reader the source.
+     * @param jsonParserConfiguration A JSONParserConfiguration instance that controls the behavior of the parser.
+     *
+     */
+    public JSONTokener(Reader reader, JSONParserConfiguration jsonParserConfiguration) {
+        this.jsonParserConfiguration = jsonParserConfiguration;
         this.reader = reader.markSupported()
                 ? reader
                         : new BufferedReader(reader);
@@ -51,25 +65,57 @@ public class JSONTokener {
         this.line = 1;
     }
 
-
     /**
      * Construct a JSONTokener from an InputStream. The caller must close the input stream.
      * @param inputStream The source.
      */
     public JSONTokener(InputStream inputStream) {
-        this(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        this(inputStream, new JSONParserConfiguration());
+    }
+
+    /**
+     * Construct a JSONTokener from an InputStream. The caller must close the input stream.
+     * @param inputStream The source.
+     * @param jsonParserConfiguration A JSONParserConfiguration instance that controls the behavior of the parser.
+     */
+    public JSONTokener(InputStream inputStream, JSONParserConfiguration jsonParserConfiguration) {
+        this(new InputStreamReader(inputStream, Charset.forName("UTF-8")), jsonParserConfiguration);
     }
 
 
     /**
      * Construct a JSONTokener from a string.
      *
-     * @param s     A source string.
+     * @param source A source string.
      */
-    public JSONTokener(String s) {
-        this(new StringReader(s));
+    public JSONTokener(String source) {
+        this(new StringReader(source));
     }
 
+    /**
+     * Construct a JSONTokener from an InputStream. The caller must close the input stream.
+     * @param source The source.
+     * @param jsonParserConfiguration A JSONParserConfiguration instance that controls the behavior of the parser.
+     */
+    public JSONTokener(String source, JSONParserConfiguration jsonParserConfiguration) {
+        this(new StringReader(source), jsonParserConfiguration);
+    }
+
+    /**
+     * Getter
+     * @return jsonParserConfiguration
+     */
+    public JSONParserConfiguration getJsonParserConfiguration() {
+        return jsonParserConfiguration;
+    }
+
+    /**
+     * Setter
+     * @param jsonParserConfiguration new value for jsonParserConfiguration
+     */
+    public void setJsonParserConfiguration(JSONParserConfiguration jsonParserConfiguration) {
+        this.jsonParserConfiguration = jsonParserConfiguration;
+    }
 
     /**
      * Back up one character. This provides a sort of lookahead capability,
@@ -299,7 +345,8 @@ public class JSONTokener {
             case 0:
             case '\n':
             case '\r':
-                throw this.syntaxError("Unterminated string");
+                throw this.syntaxError("Unterminated string. " +
+                        "Character with int code " + (int) c + " is not allowed within a quoted string.");
             case '\\':
                 c = this.next();
                 switch (c) {
@@ -319,10 +366,12 @@ public class JSONTokener {
                     sb.append('\r');
                     break;
                 case 'u':
+                    String next = this.next(4);
                     try {
-                        sb.append((char)Integer.parseInt(this.next(4), 16));
+                        sb.append((char)Integer.parseInt(next, 16));
                     } catch (NumberFormatException e) {
-                        throw this.syntaxError("Illegal escape.", e);
+                        throw this.syntaxError("Illegal escape. " +
+                                "\\u must be followed by a 4 digit hexadecimal number. \\" + next + " is not valid.", e);
                     }
                     break;
                 case '"':
@@ -332,7 +381,7 @@ public class JSONTokener {
                     sb.append(c);
                     break;
                 default:
-                    throw this.syntaxError("Illegal escape.");
+                    throw this.syntaxError("Illegal escape. Escape sequence  \\" + c + " is not valid.");
                 }
                 break;
             default:
@@ -406,14 +455,14 @@ public class JSONTokener {
         case '{':
             this.back();
             try {
-                return new JSONObject(this);
+                return new JSONObject(this, jsonParserConfiguration);
             } catch (StackOverflowError e) {
                 throw new JSONException("JSON Array or Object depth too large to process.", e);
             }
         case '[':
             this.back();
             try {
-                return new JSONArray(this);
+                return new JSONArray(this, jsonParserConfiguration);
             } catch (StackOverflowError e) {
                 throw new JSONException("JSON Array or Object depth too large to process.", e);
             }
@@ -424,6 +473,12 @@ public class JSONTokener {
     Object nextSimpleValue(char c) {
         String string;
 
+        // Strict mode only allows strings with explicit double quotes
+        if (jsonParserConfiguration != null &&
+                jsonParserConfiguration.isStrictMode() &&
+                c == '\'') {
+            throw this.syntaxError("Strict mode error: Single quoted strings are not allowed");
+        }
         switch (c) {
         case '"':
         case '\'':
@@ -452,7 +507,14 @@ public class JSONTokener {
         if ("".equals(string)) {
             throw this.syntaxError("Missing value");
         }
-        return JSONObject.stringToValue(string);
+        Object obj = JSONObject.stringToValue(string);
+        // Strict mode only allows strings with explicit double quotes
+        if (jsonParserConfiguration != null &&
+                jsonParserConfiguration.isStrictMode() &&
+                obj instanceof String) {
+            throw this.syntaxError(String.format("Strict mode error: Value '%s' is not surrounded by quotes", obj));
+        }
+        return obj;
     }
 
 
