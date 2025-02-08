@@ -19,7 +19,7 @@ repositories {
     }
 }
 dependencies {
-    implementation 'com.github.bluemods:JSON-java:'
+    implementation 'com.github.bluemods:JSON-java:20250107'
 }
 ```
 [![Java CI with Maven](https://github.com/stleary/JSON-java/actions/workflows/pipeline.yml/badge.svg)](https://github.com/stleary/JSON-java/actions/workflows/pipeline.yml)
