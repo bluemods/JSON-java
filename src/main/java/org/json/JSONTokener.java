@@ -1,7 +1,7 @@
 package org.json;
 
 import java.io.*;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /*
 Public Domain.
@@ -79,7 +79,7 @@ public class JSONTokener {
      * @param jsonParserConfiguration A JSONParserConfiguration instance that controls the behavior of the parser.
      */
     public JSONTokener(InputStream inputStream, JSONParserConfiguration jsonParserConfiguration) {
-        this(new InputStreamReader(inputStream, Charset.forName("UTF-8")), jsonParserConfiguration);
+        this(new InputStreamReader(inputStream, StandardCharsets.UTF_8), jsonParserConfiguration);
     }
 
 
