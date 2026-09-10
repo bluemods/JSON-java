@@ -9,8 +9,9 @@ JSON in Java [package org.json]
 [![Maven Central](https://img.shields.io/maven-central/v/org.json/json.svg)](https://mvnrepository.com/artifact/org.json/json)
 [![Java CI with Maven](https://github.com/stleary/JSON-java/actions/workflows/pipeline.yml/badge.svg)](https://github.com/stleary/JSON-java/actions/workflows/pipeline.yml)
 [![CodeQL](https://github.com/stleary/JSON-java/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/stleary/JSON-java/actions/workflows/codeql-analysis.yml)
+[![javadoc](https://javadoc.io/badge2/org.json/json/javadoc.svg)](https://javadoc.io/doc/org.json/json)
 
-**[Click here if you just want the latest release jar file.](https://search.maven.org/remotecontent?filepath=org/json/json/20250517/json-20250517.jar)**
+**[Click here if you just want the latest release jar file.](https://repo1.maven.org/maven2/org/json/json/20260814/json-20260814.jar)**
 
 
 # Overview
@@ -19,6 +20,8 @@ JSON in Java [package org.json]
 
 The JSON-Java package is a reference implementation that demonstrates how to parse JSON documents into Java objects and how to generate new JSON documents from the Java classes.
 
+The files in this package implement JSON encoders and decoders. The package can also convert between JSON and XML, HTTP headers, Cookies, and CDL.
+
 Project goals include:
 * Reliable and consistent results
 * Adherence to the JSON specification 
@@ -26,10 +29,21 @@ Project goals include:
 * No external dependencies
 * Fast execution and low memory footprint
 * Maintain backward compatibility
-* Designed and tested to use on Java versions 1.6 - 21
+* Designed and tested to use on Java versions 1.6 - 25
 
+# License Clarification
+This project is in the public domain. This means:
+* You can use this code for any purpose, including commercial projects
+* No attribution or credit is required
+* You can modify, distribute, and sublicense freely
+* There are no conditions or restrictions whatsoever
 
-The files in this package implement JSON encoders and decoders. The package can also convert between JSON and XML, HTTP headers, Cookies, and CDL.
+We recognize this can create uncertainty for some corporate legal departments accustomed to standard licenses like MIT or Apache 2.0.
+If your organization requires a named license for compliance purposes, public domain is functionally equivalent to the Unlicense or CC0 1.0, both of which have been reviewed and accepted by organizations including the Open Source Initiative and Creative Commons. You may reference either when explaining this project's terms to your legal team.
+
+# Signing keys used in releases
+
+The signing keys can be found in [SECURITY.md](https://github.com/stleary/JSON-java/blob/master/docs/SECURITY.md)
 
 # If you would like to contribute to this project
 

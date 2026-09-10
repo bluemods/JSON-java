@@ -566,6 +566,42 @@ public class XMLTest {
     }
 
     /**
+     * A JSON key containing XML metacharacters must not be emitted as a raw
+     * tag name, since doing so allows the key to break out of its element and
+     * inject sibling structure into the output (CWE-91, issue #1071).
+     */
+    @Test
+    public void toStringRejectsElementInjectionInKey()
+    {
+        JSONObject jo = new JSONObject(
+                "{\"a/><injected>evil</injected><a\":\"\"}");
+        try {
+            XML.toString(jo, "root");
+            fail("expected JSONException for key containing XML metacharacters");
+        } catch (JSONException expected) {
+            // expected: '/', '<', '>' are rejected in element names
+        }
+
+        // caller-supplied tagName is checked too
+        try {
+            XML.toString(new JSONObject(), "bad<tag");
+            fail("expected JSONException for tagName containing '<'");
+        } catch (JSONException expected) {
+            // expected: '<' is rejected in element names
+        }
+
+        // each metacharacter is rejected individually
+        for (char c : new char[] {'<', '>', '&', '"', '\'', '/'}) {
+            try {
+                XML.toString(new JSONObject().put("a" + c + "b", "v"));
+                fail("expected JSONException for key containing '" + c + "'");
+            } catch (JSONException expected) {
+                // expected
+            }
+        }
+    }
+
+    /**
      * JSONObject with NULL value, to XML.toString()
      */
     @Test
@@ -1424,6 +1460,154 @@ public class XMLTest {
         // Workaround for now is to use keepStrings
         JSONObject jsonObject3 = XML.toJSONObject(str2, new XMLParserConfiguration().withKeepStrings(true));
         assertEquals(jsonObject3.getJSONObject("color").getString("value"), "008E97");
+    }
+
+    /**
+     * Tests that empty numeric character reference &#; throws JSONException.
+     * Previously threw StringIndexOutOfBoundsException.
+     * Related to issue #1035
+     */
+    @Test(expected = JSONException.class)
+    public void testEmptyNumericEntityThrowsJSONException() {
+        String xmlStr = "<a>&#;</a>";
+        XML.toJSONObject(xmlStr);
+    }
+
+    /**
+     * Tests that malformed decimal entity &#txx; throws JSONException.
+     * Previously threw NumberFormatException.
+     * Related to issue #1036
+     */
+    @Test(expected = JSONException.class)
+    public void testInvalidDecimalEntityThrowsJSONException() {
+        String xmlStr = "<a>&#txx;</a>";
+        XML.toJSONObject(xmlStr);
+    }
+
+    /**
+     * Tests that empty hex entity &#x; throws JSONException.
+     * Validates proper input validation for hex entities.
+     */
+    @Test(expected = JSONException.class)
+    public void testEmptyHexEntityThrowsJSONException() {
+        String xmlStr = "<a>&#x;</a>";
+        XML.toJSONObject(xmlStr);
+    }
+
+    /**
+     * Tests that invalid hex entity &#xGGG; throws JSONException.
+     * Validates hex digit validation.
+     */
+    @Test(expected = JSONException.class)
+    public void testInvalidHexEntityThrowsJSONException() {
+        String xmlStr = "<a>&#xGGG;</a>";
+        XML.toJSONObject(xmlStr);
+    }
+
+    /**
+     * Tests that out-of-range hex entities throw JSONException rather than an uncaught runtime exception.
+     */
+    @Test(expected = JSONException.class)
+    public void testOutOfRangeHexEntityThrowsJSONException() {
+        String xmlStr = "<a>&#x110000;</a>";
+        XML.toJSONObject(xmlStr);
+    }
+
+    /**
+     * Tests that out-of-range decimal entities throw JSONException rather than an uncaught runtime exception.
+     */
+    @Test(expected = JSONException.class)
+    public void testOutOfRangeDecimalEntityThrowsJSONException() {
+        String xmlStr = "<a>&#1114112;</a>";
+        XML.toJSONObject(xmlStr);
+    }
+
+    /**
+     * Tests that surrogate code point entities throw JSONException.
+     */
+    @Test(expected = JSONException.class)
+    public void testSurrogateHexEntityThrowsJSONException() {
+        String xmlStr = "<a>&#xD800;</a>";
+        XML.toJSONObject(xmlStr);
+    }
+
+    /**
+     * Tests that out-of-range numeric entities in attribute values throw JSONException.
+     */
+    @Test(expected = JSONException.class)
+    public void testOutOfRangeHexEntityInAttributeThrowsJSONException() {
+        String xmlStr = "<a b=\"&#x110000;\"/>";
+        XML.toJSONObject(xmlStr);
+    }
+
+    /**
+     * Tests that valid decimal numeric entity &#65; works correctly.
+     * Should decode to character 'A'.
+     */
+    @Test
+    public void testValidDecimalEntity() {
+        String xmlStr = "<a>&#65;</a>";
+        JSONObject jsonObject = XML.toJSONObject(xmlStr);
+        assertEquals("A", jsonObject.getString("a"));
+    }
+
+    /**
+     * Tests that valid hex numeric entity &#x41; works correctly.
+     * Should decode to character 'A'.
+     */
+    @Test
+    public void testValidHexEntity() {
+        String xmlStr = "<a>&#x41;</a>";
+        JSONObject jsonObject = XML.toJSONObject(xmlStr);
+        assertEquals("A", jsonObject.getString("a"));
+    }
+
+    /**
+     * Tests that valid uppercase hex entity &#X41; works correctly.
+     * Should decode to character 'A'.
+     */
+    @Test
+    public void testValidUppercaseHexEntity() {
+        String xmlStr = "<a>&#X41;</a>";
+        JSONObject jsonObject = XML.toJSONObject(xmlStr);
+        assertEquals("A", jsonObject.getString("a"));
+    }
+
+    /**
+     * Tests that valid XML numeric character references for whitespace
+     * control characters (TAB, LF, CR) are correctly unescaped. These
+     * codepoints are explicitly allowed by the XML 1.0 spec
+     * (https://www.w3.org/TR/REC-xml/#charsets) but were previously rejected
+     * as invalid. See issue #1059.
+     */
+    @Test
+    public void testValidWhitespaceNumericEntityUnescape() {
+        // decimal references for the three allowed control characters
+        assertEquals("\t", XML.unescape("&#9;"));
+        assertEquals("\n", XML.unescape("&#10;"));
+        assertEquals("\r", XML.unescape("&#13;"));
+        // hex references for the same codepoints
+        assertEquals("\t", XML.unescape("&#x9;"));
+        assertEquals("\n", XML.unescape("&#xA;"));
+        assertEquals("\r", XML.unescape("&#xD;"));
+    }
+
+    /**
+     * Tests that {@code XML.toJSONObject} accepts numeric character references
+     * for the XML-allowed control characters (TAB, LF, CR) without throwing.
+     * Regression test for #1059, where {@code XML.toJSONObject("<a>&#10;</a>")}
+     * threw JSONException in versions after 20251224.
+     */
+    @Test
+    public void testValidWhitespaceNumericEntityToJSONObject() {
+        // LF reference should round-trip through toJSONObject without throwing
+        JSONObject jsonObject = XML.toJSONObject("<a>&#10;</a>");
+        // the value is the LF character (possibly trimmed by the JSON path,
+        // but the call must not throw)
+        assertTrue(jsonObject.has("a"));
+        // TAB and CR references also accepted
+        XML.toJSONObject("<a>&#9;</a>");
+        XML.toJSONObject("<a>&#13;</a>");
     }
 
 }

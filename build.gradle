@@ -3,9 +3,10 @@
  */
 apply plugin: 'java'
 apply plugin: 'eclipse'
-// apply plugin: 'jacoco'
+apply plugin: 'jacoco'
 apply plugin: 'maven-publish'
 
+// for now, publishing to maven is still a manual process
 //plugins {
     // id 'java'
     //id 'maven-publish'
@@ -16,6 +17,25 @@ repositories {
     mavenCentral()
     maven {
         url = uri('https://oss.sonatype.org/content/repositories/snapshots')
+    }
+}
+
+// To view the report open build/reports/jacoco/test/html/index.html
+// Note: disable jacocoTestReport and test blocks, and the jacoco plugin if it interferes with stepping in the debugger
+jacocoTestReport {
+    reports {
+        html.required = true
+    }
+}
+
+test {
+    finalizedBy jacocoTestReport
+}
+
+// enable logging to stdout during test
+tasks.withType(Test) {
+    testLogging {
+        showStandardStreams = true
     }
 }
 
@@ -30,7 +50,7 @@ subprojects {
 }
 
 group = 'org.json'
-version = 'v20250517-SNAPSHOT'
+version = 'v20260814-SNAPSHOT'
 description = 'JSON in Java'
 sourceCompatibility = '1.8'
 

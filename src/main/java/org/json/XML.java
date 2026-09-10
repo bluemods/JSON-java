@@ -9,6 +9,7 @@ import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
  * This provides static methods to convert an XML text into a JSONObject, and to
@@ -80,7 +81,7 @@ public class XML {
             public Iterator<Integer> iterator() {
                 return new Iterator<Integer>() {
                     private int nextIndex = 0;
-                    private int length = string.length();
+                    private final int length = string.length();
 
                     @Override
                     public boolean hasNext() {
@@ -89,6 +90,9 @@ public class XML {
 
                     @Override
                     public Integer next() {
+                        if (!hasNext()) {
+                            throw new NoSuchElementException();
+                        }
                         int result = string.codePointAt(this.nextIndex);
                         this.nextIndex += Character.charCount(result);
                         return result;
@@ -154,7 +158,7 @@ public class XML {
      * @param cp code point to test
      * @return true if the code point is not valid for an XML
      */
-    private static boolean mustEscape(int cp) {
+    static boolean mustEscape(int cp) {
         /* Valid range from https://www.w3.org/TR/REC-xml/#charsets
          *
          * #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
@@ -168,8 +172,14 @@ public class XML {
                 && cp != 0xA
                 && cp != 0xD
             ) || !(
-                // valid the range of acceptable characters that aren't control
-                (cp >= 0x20 && cp <= 0xD7FF)
+                // Valid character range per W3C XML 1.0 spec:
+                // #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
+                // Previously omitted #x9/#xA/#xD, causing unescape("&#10;") etc.
+                // to reject valid LF/TAB/CR as illegal (see #1059)
+                cp == 0x9
+                || cp == 0xA
+                || cp == 0xD
+                || (cp >= 0x20 && cp <= 0xD7FF)
                 || (cp >= 0xE000 && cp <= 0xFFFD)
                 || (cp >= 0x10000 && cp <= 0x10FFFF)
             )
@@ -224,6 +234,28 @@ public class XML {
             if (Character.isWhitespace(string.charAt(i))) {
                 throw new JSONException("'" + string
                         + "' contains a space character.");
+            }
+        }
+    }
+
+    /**
+     * Throw an exception if the string contains an XML metacharacter
+     * ({@code < > & " ' /}). Used by {@link #toString(Object)} to reject JSON
+     * keys that would otherwise be emitted verbatim between {@code <} and
+     * {@code >} and could break out of the tag context (element injection,
+     * CWE-91; see issue #1071).
+     *
+     * @param string the candidate element name
+     * @throws JSONException if {@code string} contains an XML metacharacter
+     */
+    static void noXmlMetachars(String string) throws JSONException {
+        int length = string.length();
+        for (int i = 0; i < length; i++) {
+            char c = string.charAt(i);
+            if (c == '<' || c == '>' || c == '&'
+                    || c == '"' || c == '\'' || c == '/') {
+                throw new JSONException("'" + string
+                        + "' contains an XML metacharacter and may not be used as an element name.");
             }
         }
     }
@@ -387,8 +419,13 @@ public class XML {
                             context.append(tagName, JSONObject.NULL);
                         } else if (jsonObject.length() > 0) {
                             context.append(tagName, jsonObject);
-                        } else {
+                        } else if(context.isEmpty()) { //avoids resetting the array in case of an empty tag in the middle or end
                             context.put(tagName, new JSONArray());
+                            if (jsonObject.isEmpty()){
+                                context.append(tagName, "");
+                            }
+                        } else {
+                            context.append(tagName, "");
                         }
                     } else {
                         if (nilAttributeFound) {
@@ -428,6 +465,9 @@ public class XML {
                                                 config.isKeepNumberAsString()
                                                         ? ((String) token)
                                                         : obj);
+                                    } else if (obj == JSONObject.NULL) {
+                                        jsonObject.accumulate(config.getcDataTagName(),
+                                                config.isKeepStrings() ? ((String) token) : obj);
                                     } else {
                                         jsonObject.accumulate(config.getcDataTagName(), stringToValue((String) token));
                                     }
@@ -444,7 +484,11 @@ public class XML {
                                 if (config.getForceList().contains(tagName)) {
                                     // Force the value to be an array
                                     if (jsonObject.length() == 0) {
-                                        context.put(tagName, new JSONArray());
+                                        //avoids resetting the array in case of an empty element in the middle or end
+                                        if(context.isEmpty()) {
+                                            context.put(tagName, new JSONArray());
+                                        }
+                                        context.append(tagName, "");
                                     } else if (jsonObject.length() == 1
                                             && jsonObject.opt(config.getcDataTagName()) != null) {
                                         context.append(tagName, jsonObject.opt(config.getcDataTagName()));
@@ -603,14 +647,30 @@ public class XML {
 
     /**
      * This method is the same as {@link JSONObject#stringToValue(String)}.
-     *
-     * @param string String to convert
+     * Warning! stringToValue(String) uses the default max number length. If you want to override it,
+     * use a suitable initialized XMLParserConfiguration and the method: stringToValue(String, XMLParserConfiguration).
+     * @param str String to convert
      * @return JSON value of this string or the string
      */
     // To maintain compatibility with the Android API, this method is a direct copy of
     // the one in JSONObject. Changes made here should be reflected there.
     // This method should not make calls out of the XML object.
-    public static Object stringToValue(String string) {
+    public static Object stringToValue(String str) {
+        return stringToValue(str, new XMLParserConfiguration());
+    }
+
+    /**
+     * This method is the same as {@link JSONObject#stringToValue(String)}.
+     *
+     * @param string String to convert
+     * @param xmlParserConfiguration the XML parser config object
+     * @return JSON value of this string or the string. If the string represents a number that is too large,
+     * a string will be returned.
+     */
+    // To maintain compatibility with the Android API, this method is a direct copy of
+    // the one in JSONObject. Changes made here should be reflected there.
+    // This method should not make calls out of the XML object.
+    public static Object stringToValue(String string, XMLParserConfiguration xmlParserConfiguration) {
         if ("".equals(string)) {
             return string;
         }
@@ -634,7 +694,13 @@ public class XML {
         char initial = string.charAt(0);
         if ((initial >= '0' && initial <= '9') || initial == '-') {
             try {
-                return stringToNumber(string);
+                // user declines max number checking
+                if (xmlParserConfiguration.getMaxNumberLength() == ParserConfiguration.UNDEFINED_MAXIMUM_NUMBER_LENGTH) {
+                    return stringToNumber(string);
+                }
+                if(string.length() <= xmlParserConfiguration.getMaxNumberLength()) {
+                	return stringToNumber(string);
+                }
             } catch (Exception ignore) {
             }
         }
@@ -930,6 +996,10 @@ public class XML {
         JSONObject jo;
         String string;
 
+        if (tagName != null) {
+            noXmlMetachars(tagName);
+        }
+
         if (object instanceof JSONObject) {
 
             // Emit <tagName>
@@ -948,6 +1018,9 @@ public class XML {
             // don't use the new entrySet accessor to maintain Android Support
             jo = (JSONObject) object;
             for (final String key : jo.keySet()) {
+                if (!key.equals(config.getcDataTagName())) {
+                    noXmlMetachars(key);
+                }
                 Object value = jo.opt(key);
                 if (value == null) {
                     value = "";
