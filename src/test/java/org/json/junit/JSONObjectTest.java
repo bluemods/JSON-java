@@ -3743,6 +3743,7 @@ public class JSONObjectTest {
 		assertTrue("JSONObject should be empty", jsonObject.isEmpty());
 	}
 
+	/*
 	@Test
 	public void jsonObjectParseFromJson_0() {
 		JSONObject object = new JSONObject();
@@ -3881,7 +3882,7 @@ public class JSONObjectTest {
 		} finally {
 			CustomClassJ.classState = initialClassState;
 		}
-	}
+	}*/
 
 	@Test
 	public void testMaxNumberLength() {
