@@ -3,16 +3,12 @@
 <sub><sup>image credit: Ismael Pérez Ortiz</sup></sub>
 
 
-JSON in Java [package org.json]
+JSON in Java With JSONObject ordering [package org.json]
 ===============================
 
-[![Maven Central](https://img.shields.io/maven-central/v/org.json/json.svg)](https://mvnrepository.com/artifact/org.json/json)
-[![Java CI with Maven](https://github.com/stleary/JSON-java/actions/workflows/pipeline.yml/badge.svg)](https://github.com/stleary/JSON-java/actions/workflows/pipeline.yml)
-[![CodeQL](https://github.com/stleary/JSON-java/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/stleary/JSON-java/actions/workflows/codeql-analysis.yml)
-[![javadoc](https://javadoc.io/badge2/org.json/json/javadoc.svg)](https://javadoc.io/doc/org.json/json)
-
-**[Click here if you just want the latest release jar file.](https://repo1.maven.org/maven2/org/json/json/20260814/json-20260814.jar)**
-
+```gradle
+    implementation("com.github.bluemods:JSON-java:20260814")
+```
 
 # Overview
 
